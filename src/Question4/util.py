@@ -1,100 +1,182 @@
-from pyspark.sql.functions import *
 import re
-
-
-def flatten_dataframe(df):
-
-    return df.select(
-        "id",
-        "firstName",
-        "lastName",
-        col("department.deptId").alias("deptId"),
-        col("department.deptName").alias("deptName"),
-        "skills"
+ 
+from pyspark.sql.functions import (
+    col,
+    explode,
+    explode_outer,
+    posexplode,
+    current_date,
+    year,
+    month,
+    dayofmonth
+)
+ 
+ 
+# -----------------------------------
+# Read JSON File Dynamically
+# -----------------------------------
+ 
+def read_json_dynamic(spark, path):
+ 
+    return (
+        spark.read
+        .option("multiline", "true")
+        .json(path)
     )
-
-
+ 
+ 
+# -----------------------------------
+# Flatten Nested JSON
+# -----------------------------------
+ 
+def flatten_df(df):
+ 
+    return (
+        df
+        .withColumn(
+            "employee",
+            explode("employees")
+        )
+        .select(
+            col("id"),
+            col("properties.name")
+            .alias("companyName"),
+ 
+            col("properties.storeSize")
+            .alias("storeSize"),
+ 
+            col("employee.empId")
+            .alias("employeeId"),
+ 
+            col("employee.empName")
+            .alias("employeeName")
+        )
+    )
+ 
+ 
+# -----------------------------------
+# Record Count
+# -----------------------------------
+ 
 def record_count(df):
-
-    before_count = df.count()
-
-    explode_df = df.withColumn(
-        "skill",
-        explode("skills")
+ 
+    return df.count()
+ 
+ 
+# -----------------------------------
+# explode()
+# -----------------------------------
+ 
+def explode_demo(df):
+ 
+    return (
+        df
+        .select(
+            "id",
+            explode("employees")
+            .alias("employee")
+        )
     )
-
-    after_count = explode_df.count()
-
-    print("Count Before Explode :", before_count)
-    print("Count After Explode :", after_count)
-    print("Difference :", after_count - before_count)
-
-
-def explode_example(df):
-
-    df.withColumn(
-        "skill",
-        explode("skills")
-    ).show(truncate=False)
-
-
-def explode_outer_example(df):
-
-    df.withColumn(
-        "skill",
-        explode_outer("skills")
-    ).show(truncate=False)
-
-
-def posexplode_example(df):
-
-    df.select(
-        "id",
-        "firstName",
-        posexplode("skills")
-    ).show(truncate=False)
-
-
-def filter_employee(df):
-
-    return df.filter(
-        col("id") == "0001"
+ 
+ 
+# -----------------------------------
+# explode_outer()
+# -----------------------------------
+ 
+def explode_outer_demo(df):
+ 
+    return (
+        df
+        .select(
+            "id",
+            explode_outer("employees")
+            .alias("employee")
+        )
     )
-
-
-def camel_to_snake(column):
-
-    return re.sub(
-        r'(?<!^)(?=[A-Z])',
-        '_',
-        column
-    ).lower()
-
-
-def rename_columns(df):
-
-    snake_df = df
-
-    for column in snake_df.columns:
-
-        snake_df = snake_df.withColumnRenamed(
+ 
+ 
+# -----------------------------------
+# posexplode()
+# -----------------------------------
+ 
+def posexplode_demo(df):
+ 
+    return (
+        df
+        .select(
+            "id",
+            posexplode("employees")
+        )
+    )
+ 
+ 
+# -----------------------------------
+# Filter Data
+# -----------------------------------
+ 
+def filter_id(df):
+ 
+    return (
+        df
+        .filter(
+            col("id") == 1001
+        )
+    )
+ 
+ 
+# -----------------------------------
+# Camel Case to Snake Case
+# -----------------------------------
+ 
+def camel_to_snake(name):
+ 
+    return (
+        re.sub(
+            r'(?<!^)(?=[A-Z])',
+            '_',
+            name
+        )
+        .lower()
+    )
+ 
+ 
+# -----------------------------------
+# Rename Columns
+# -----------------------------------
+ 
+def rename_columns_snake(df):
+ 
+    for column in df.columns:
+ 
+        df = df.withColumnRenamed(
             column,
             camel_to_snake(column)
         )
-
-    return snake_df
-
-
+ 
+    return df
+ 
+ 
+# -----------------------------------
+# Add Load Date
+# -----------------------------------
+ 
 def add_load_date(df):
-
-    return df.withColumn(
-        "load_date",
-        current_date()
+ 
+    return (
+        df
+        .withColumn(
+            "load_date",
+            current_date()
+        )
     )
-
-
-def create_partition_columns(df):
-
+ 
+ 
+# -----------------------------------
+# Add Partition Columns
+# -----------------------------------
+ 
+def add_partition_columns(df):
+ 
     return (
         df
         .withColumn(
@@ -110,24 +192,17 @@ def create_partition_columns(df):
             dayofmonth("load_date")
         )
     )
-
-
-def write_table(df):
-
-    spark.sql(
-        "create database if not exists employee"
-    )
-
-    current_year = df.select("year").first()[0]
-    current_month = df.select("month").first()[0]
-    current_day = df.select("day").first()[0]
-
-    replace_condition = (
-        f"year={current_year} "
-        f"AND month={current_month} "
-        f"AND day={current_day}"
-    )
-
+ 
+ 
+# -----------------------------------
+# Write JSON Table
+# Database : employee
+# Table    : employee_details
+# Partition: year, month, day
+# -----------------------------------
+ 
+def write_partitioned_table(df):
+ 
     (
         df.write
         .mode("overwrite")
@@ -139,11 +214,10 @@ def write_table(df):
         )
         .option(
             "replaceWhere",
-            replace_condition
+            "year IS NOT NULL AND month IS NOT NULL AND day IS NOT NULL"
         )
-        .saveAsTable(
-            "employee.employee_details"
+        .save(
+            "/Volumes/workspace/sona/s1/nested_json_file.json"
         )
     )
-
-    print("Table Created Successfully")
+ 
