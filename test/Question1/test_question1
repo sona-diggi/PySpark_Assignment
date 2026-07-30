@@ -1,0 +1,33 @@
+from src.Question1.driver import purchase_df, product_df
+from src.Question1.util import (
+    customers_only_iphone13,
+    customers_upgraded,
+    customers_all_products
+)
+
+
+def test_only_iphone13():
+
+    result = customers_only_iphone13(purchase_df)
+
+    assert result.count() == 1
+    assert result.collect()[0]["customer"] == 4
+
+
+def test_upgraded():
+
+    result = customers_upgraded(purchase_df)
+
+    customers = [row["customer"] for row in result.collect()]
+
+    assert set(customers) == {1, 3}
+
+
+def test_all_products():
+
+    result = customers_all_products(
+        purchase_df,
+        product_df
+    )
+
+    assert result.collect()[0]["customer"] == 1
