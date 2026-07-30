@@ -1,0 +1,73 @@
+import unittest
+
+from pyspark.sql import SparkSession
+
+from src.Question2.util import (
+    create_dataframe,
+    increase_partitions,
+    decrease_partitions,
+    add_masked_column
+)
+
+
+class TestQuestion2(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.spark = (
+            SparkSession.builder
+            .master("local[*]")
+            .appName("UnitTest")
+            .getOrCreate()
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.spark.stop()
+
+    def test_dataframe_creation(self):
+
+        df = create_dataframe(self.spark)
+
+        self.assertEqual(df.count(), 5)
+        self.assertEqual(df.columns, ["card_number"])
+
+    def test_repartition(self):
+
+        df = create_dataframe(self.spark)
+
+        df = increase_partitions(df, 5)
+
+        self.assertEqual(df.rdd.getNumPartitions(), 5)
+
+    def test_coalesce(self):
+
+        df = create_dataframe(self.spark)
+
+        df = increase_partitions(df, 5)
+
+        df = decrease_partitions(df, 2)
+
+        self.assertEqual(df.rdd.getNumPartitions(), 2)
+
+    def test_masking(self):
+
+        df = create_dataframe(self.spark)
+
+        result = add_masked_column(df)
+
+        output = result.collect()
+
+        self.assertEqual(
+            output[0]["masked_card_number"],
+            "************4567"
+        )
+
+        self.assertEqual(
+            output[1]["masked_card_number"],
+            "************1234"
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
