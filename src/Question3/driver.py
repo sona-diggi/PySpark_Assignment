@@ -1,5 +1,12 @@
+from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 
+# Create Spark Session
+spark = SparkSession.builder \
+    .appName("Question3") \
+    .getOrCreate()
+
+# Sample Data
 data = [
     (1, 101, "login", "2023-09-05 08:30:00"),
     (2, 102, "click", "2023-09-06 12:45:00"),
@@ -18,5 +25,4 @@ schema = StructType([
     StructField("timestamp", StringType(), True)
 ])
 
-# Create DataFrame using custom schema
 login_df = spark.createDataFrame(data, schema)

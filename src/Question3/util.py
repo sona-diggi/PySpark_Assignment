@@ -1,5 +1,6 @@
 from pyspark.sql.functions import *
 
+
 def rename_columns(df):
 
     column_mapping = {
@@ -29,13 +30,13 @@ def user_actions_last_7_days(df):
         max("time_stamp")
     ).first()[0]
 
+    cutoff_date = date_sub(lit(latest_date).cast("date"), 7)
+
     return (
-        df.filter(
-            col("time_stamp") >= date_sub(lit(latest_date), 7)
-        )
-        .groupBy("user_id")
-        .count()
-        .withColumnRenamed("count", "total_actions")
+        df.filter(col("time_stamp") >= cutoff_date)
+          .groupBy("user_id")
+          .count()
+          .withColumnRenamed("count", "total_actions")
     )
 
 
@@ -54,10 +55,7 @@ def write_csv(df):
         .mode("overwrite")
         .option("header", True)
         .option("delimiter", ",")
-        .option("nullValue", "NULL")
-        .option("quote", '"')
-        .option("escape", '"')
-        .csv("/FileStore/login_details")
+        .csv("/Volumes/workspace/sona/s1/login_details")
     )
 
 
@@ -66,5 +64,5 @@ def write_managed_table(df):
     (
         df.write
         .mode("overwrite")
-        .saveAsTable("user.login_details")
+        .saveAsTable("workspace.sona.login_details")
     )
